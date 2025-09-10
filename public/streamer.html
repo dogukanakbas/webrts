@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Streamer - Raspberry Pi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .video-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .video-container {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .video-container h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        video {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 10px;
+            background: #000;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn.start {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+        }
+
+        .btn.stop {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        }
+
+        .status {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .status h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .status p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .info-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .info-card h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .info-card .value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .log {
+            background: #1a1a1a;
+            color: #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .video-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📹 WebRTC Streamer</h1>
+            <p>Raspberry Pi Video Yayın Kontrol Paneli</p>
+        </div>
+
+        <div class="content">
+            <div class="video-section">
+                <div class="video-container">
+                    <h3>📷 Kamera Görüntüsü</h3>
+                    <video id="localVideo" autoplay muted playsinline></video>
+                </div>
+                
+                <div class="video-container">
+                    <h3>📡 Yayın Durumu</h3>
+                    <video id="remoteVideo" autoplay playsinline style="display: none;"></video>
+                    <div id="streamStatus" style="padding: 50px; color: #666;">
+                        Yayın başlatılmadı
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="startBtn" class="btn start">🎬 Yayını Başlat</button>
+                <button id="stopBtn" class="btn stop" disabled>⏹️ Yayını Durdur</button>
+                <button id="backBtn" class="btn">🏠 Ana Sayfa</button>
+            </div>
+
+            <div class="status">
+                <h3>📊 Yayın Bilgileri</h3>
+                <p><strong>Stream ID:</strong> <span id="streamId">-</span></p>
+                <p><strong>Durum:</strong> <span id="connectionStatus">Bağlantı yok</span></p>
+                <p><strong>İzleyici Sayısı:</strong> <span id="viewerCount">0</span></p>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <h4>📡 Bağlantı</h4>
+                    <div class="value" id="connectionType">-</div>
+                </div>
+                <div class="info-card">
+                    <h4>📊 Bant Genişliği</h4>
+                    <div class="value" id="bandwidth">-</div>
+                </div>
+                <div class="info-card">
+                    <h4>⏱️ Yayın Süresi</h4>
+                    <div class="value" id="streamTime">00:00</div>
+                </div>
+            </div>
+
+            <div class="log" id="log">
+                <div>🚀 WebRTC Streamer başlatıldı</div>
+                <div>📡 Sunucuya bağlanılıyor...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        class WebRTCStreamer {
+            constructor() {
+                this.socket = io();
+                this.localVideo = document.getElementById('localVideo');
+                this.remoteVideo = document.getElementById('remoteVideo');
+                this.streamId = null;
+                this.localStream = null;
+                this.peerConnections = new Map();
+                this.viewerCount = 0;
+                this.startTime = null;
+                this.timer = null;
+
+                this.initializeElements();
+                this.setupSocketListeners();
+                this.setupEventListeners();
+            }
+
+            initializeElements() {
+                this.startBtn = document.getElementById('startBtn');
+                this.stopBtn = document.getElementById('stopBtn');
+                this.backBtn = document.getElementById('backBtn');
+                this.streamIdEl = document.getElementById('streamId');
+                this.connectionStatusEl = document.getElementById('connectionStatus');
+                this.viewerCountEl = document.getElementById('viewerCount');
+                this.connectionTypeEl = document.getElementById('connectionType');
+                this.bandwidthEl = document.getElementById('bandwidth');
+                this.streamTimeEl = document.getElementById('streamTime');
+                this.logEl = document.getElementById('log');
+            }
+
+            setupSocketListeners() {
+                this.socket.on('connect', () => {
+                    this.log('✅ Sunucuya bağlandı');
+                    this.updateConnectionStatus('Bağlı');
+                });
+
+                this.socket.on('disconnect', () => {
+                    this.log('❌ Sunucu bağlantısı kesildi');
+                    this.updateConnectionStatus('Bağlantı yok');
+                });
+
+                this.socket.on('streamer-ready', (data) => {
+                    this.streamId = data.streamId;
+                    this.streamIdEl.textContent = this.streamId;
+                    this.log(`🎬 Stream ID: ${this.streamId}`);
+                });
+
+                this.socket.on('viewer-joined', (data) => {
+                    this.viewerCount++;
+                    this.viewerCountEl.textContent = this.viewerCount;
+                    this.log(`👀 Yeni izleyici: ${data.viewerId}`);
+                    this.createPeerConnection(data.viewerId);
+                });
+
+                this.socket.on('viewer-left', (data) => {
+                    this.viewerCount--;
+                    this.viewerCountEl.textContent = this.viewerCount;
+                    this.log(`👋 İzleyici ayrıldı: ${data.viewerId}`);
+                    this.peerConnections.delete(data.viewerId);
+                });
+
+                this.socket.on('offer', async (data) => {
+                    await this.handleOffer(data);
+                });
+
+                this.socket.on('ice-candidate', (data) => {
+                    this.handleIceCandidate(data);
+                });
+            }
+
+            setupEventListeners() {
+                this.startBtn.addEventListener('click', () => this.startStreaming());
+                this.stopBtn.addEventListener('click', () => this.stopStreaming());
+                this.backBtn.addEventListener('click', () => window.location.href = '/');
+            }
+
+            async startStreaming() {
+                try {
+                    this.log('🎬 Yayın başlatılıyor...');
+                    
+                    // Get camera stream
+                    this.localStream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 },
+                            frameRate: { ideal: 30 }
+                        },
+                        audio: true
+                    });
+
+                    this.localVideo.srcObject = this.localStream;
+                    this.log('📷 Kamera erişimi sağlandı');
+
+                    // Join as streamer
+                    this.socket.emit('streamer-join', {
+                        streamId: this.streamId,
+                        streamData: {
+                            title: 'Raspberry Pi Stream',
+                            description: 'Live video from Raspberry Pi'
+                        }
+                    });
+
+                    this.startBtn.disabled = true;
+                    this.stopBtn.disabled = false;
+                    this.startTime = new Date();
+                    this.startTimer();
+                    this.log('🚀 Yayın başlatıldı!');
+
+                } catch (error) {
+                    this.log(`❌ Hata: ${error.message}`);
+                    console.error('Streaming error:', error);
+                }
+            }
+
+            stopStreaming() {
+                this.log('⏹️ Yayın durduruluyor...');
+                
+                if (this.localStream) {
+                    this.localStream.getTracks().forEach(track => track.stop());
+                    this.localStream = null;
+                }
+
+                this.peerConnections.forEach(pc => pc.close());
+                this.peerConnections.clear();
+
+                this.startBtn.disabled = false;
+                this.stopBtn.disabled = true;
+                this.viewerCount = 0;
+                this.viewerCountEl.textContent = '0';
+                this.stopTimer();
+                this.log('✅ Yayın durduruldu');
+            }
+
+            async createPeerConnection(viewerId) {
+                const peerConnection = new RTCPeerConnection({
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                });
+
+                // Add local stream tracks
+                if (this.localStream) {
+                    this.localStream.getTracks().forEach(track => {
+                        peerConnection.addTrack(track, this.localStream);
+                    });
+                }
+
+                // Handle ICE candidates
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        this.socket.emit('ice-candidate', {
+                            target: viewerId,
+                            candidate: event.candidate
+                        });
+                    }
+                };
+
+                this.peerConnections.set(viewerId, peerConnection);
+                this.log(`🔗 Peer connection oluşturuldu: ${viewerId}`);
+            }
+
+            async handleOffer(data) {
+                const peerConnection = this.peerConnections.get(data.sender);
+                if (!peerConnection) return;
+
+                await peerConnection.setRemoteDescription(data.offer);
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+
+                this.socket.emit('answer', {
+                    target: data.sender,
+                    answer: answer
+                });
+
+                this.log(`📤 Answer gönderildi: ${data.sender}`);
+            }
+
+            handleIceCandidate(data) {
+                const peerConnection = this.peerConnections.get(data.sender);
+                if (peerConnection) {
+                    peerConnection.addIceCandidate(data.candidate);
+                }
+            }
+
+            startTimer() {
+                this.timer = setInterval(() => {
+                    if (this.startTime) {
+                        const elapsed = new Date() - this.startTime;
+                        const minutes = Math.floor(elapsed / 60000);
+                        const seconds = Math.floor((elapsed % 60000) / 1000);
+                        this.streamTimeEl.textContent = 
+                            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    }
+                }, 1000);
+            }
+
+            stopTimer() {
+                if (this.timer) {
+                    clearInterval(this.timer);
+                    this.timer = null;
+                }
+                this.streamTimeEl.textContent = '00:00';
+            }
+
+            updateConnectionStatus(status) {
+                this.connectionStatusEl.textContent = status;
+                this.connectionTypeEl.textContent = status === 'Bağlı' ? 'WebRTC' : '-';
+            }
+
+            log(message) {
+                const timestamp = new Date().toLocaleTimeString();
+                this.logEl.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+                this.logEl.scrollTop = this.logEl.scrollHeight;
+            }
+        }
+
+        // Initialize streamer when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new WebRTCStreamer();
+        });
+    </script>
+</body>
+</html>

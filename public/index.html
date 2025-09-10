@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Video Streaming Server</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            min-width: 200px;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .btn.streamer {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        }
+
+        .btn.viewer {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+        }
+
+        .status {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .status h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .status p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .features {
+            margin-top: 40px;
+            text-align: left;
+        }
+
+        .features h3 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            padding: 10px 0;
+            color: #666;
+            border-bottom: 1px solid #eee;
+        }
+
+        .feature-list li:before {
+            content: "✓";
+            color: #4ecdc4;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .button-group {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 WebRTC Video Streaming</h1>
+        <p class="subtitle">Raspberry Pi'den gelen video yayınını izleyin</p>
+        
+        <div class="button-group">
+            <a href="/streamer" class="btn streamer">📹 Streamer (Raspberry Pi)</a>
+            <a href="/viewer" class="btn viewer">👀 Viewer (İzleyici)</a>
+        </div>
+
+        <div class="status">
+            <h3>🚀 Sunucu Durumu</h3>
+            <p>WebRTC streaming sunucusu aktif ve hazır. Raspberry Pi'nizi streamer olarak bağlayın ve diğer cihazlardan izleyin.</p>
+        </div>
+
+        <div class="features">
+            <h3>✨ Özellikler</h3>
+            <ul class="feature-list">
+                <li>Gerçek zamanlı video streaming</li>
+                <li>Düşük gecikme (WebRTC)</li>
+                <li>Çoklu izleyici desteği</li>
+                <li>Mobil uyumlu arayüz</li>
+                <li>Otomatik bağlantı yönetimi</li>
+                <li>Güvenli peer-to-peer bağlantı</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Check server status
+        fetch('/api/streams')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Active streams:', data);
+            })
+            .catch(error => {
+                console.error('Server connection error:', error);
+            });
+    </script>
+</body>
+</html>

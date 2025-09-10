@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Viewer - Video İzleyici</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .stream-selector {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .stream-selector h3 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .input-group input {
+            padding: 12px 20px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            font-size: 1em;
+            min-width: 300px;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #4ecdc4;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn.secondary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+        }
+
+        .btn.danger {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        }
+
+        .video-container {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .video-container h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        video {
+            width: 100%;
+            max-width: 800px;
+            border-radius: 10px;
+            background: #000;
+        }
+
+        .video-placeholder {
+            width: 100%;
+            height: 400px;
+            background: #1a1a1a;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 1.2em;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .status {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #4ecdc4;
+        }
+
+        .status h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .status p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .info-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .info-card h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .info-card .value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #4ecdc4;
+        }
+
+        .log {
+            background: #1a1a1a;
+            color: #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .available-streams {
+            margin-top: 20px;
+        }
+
+        .stream-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stream-item {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .stream-item:hover {
+            border-color: #4ecdc4;
+            transform: translateY(-2px);
+        }
+
+        .stream-item.active {
+            border-color: #4ecdc4;
+            background: #f0fffe;
+        }
+
+        @media (max-width: 768px) {
+            .input-group {
+                flex-direction: column;
+            }
+            
+            .input-group input {
+                min-width: 100%;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👀 WebRTC Viewer</h1>
+            <p>Raspberry Pi Video Yayınını İzleyin</p>
+        </div>
+
+        <div class="content">
+            <div class="stream-selector">
+                <h3>📡 Stream Bağlantısı</h3>
+                <div class="input-group">
+                    <input type="text" id="streamIdInput" placeholder="Stream ID girin veya otomatik bağlanın">
+                    <button id="connectBtn" class="btn">🔗 Bağlan</button>
+                    <button id="disconnectBtn" class="btn danger" disabled>❌ Bağlantıyı Kes</button>
+                </div>
+                <button id="refreshBtn" class="btn secondary">🔄 Aktif Streamleri Listele</button>
+                
+                <div class="available-streams" id="availableStreams" style="display: none;">
+                    <h4>📺 Mevcut Streamler</h4>
+                    <div class="stream-list" id="streamList"></div>
+                </div>
+            </div>
+
+            <div class="video-container">
+                <h3>📺 Video Yayını</h3>
+                <video id="remoteVideo" autoplay playsinline style="display: none;"></video>
+                <div id="videoPlaceholder" class="video-placeholder">
+                    Stream ID girin ve bağlanın
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="fullscreenBtn" class="btn secondary" disabled>🖥️ Tam Ekran</button>
+                <button id="muteBtn" class="btn secondary" disabled>🔇 Sessiz</button>
+                <button id="backBtn" class="btn secondary">🏠 Ana Sayfa</button>
+            </div>
+
+            <div class="status">
+                <h3>📊 Bağlantı Bilgileri</h3>
+                <p><strong>Stream ID:</strong> <span id="streamId">-</span></p>
+                <p><strong>Durum:</strong> <span id="connectionStatus">Bağlantı yok</span></p>
+                <p><strong>Gecikme:</strong> <span id="latency">-</span></p>
+                <p><strong>Çözünürlük:</strong> <span id="resolution">-</span></p>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <h4>📡 Bağlantı</h4>
+                    <div class="value" id="connectionType">-</div>
+                </div>
+                <div class="info-card">
+                    <h4>📊 Bant Genişliği</h4>
+                    <div class="value" id="bandwidth">-</div>
+                </div>
+                <div class="info-card">
+                    <h4>⏱️ İzleme Süresi</h4>
+                    <div class="value" id="watchTime">00:00</div>
+                </div>
+            </div>
+
+            <div class="log" id="log">
+                <div>🚀 WebRTC Viewer başlatıldı</div>
+                <div>📡 Sunucuya bağlanılıyor...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        class WebRTCViewer {
+            constructor() {
+                this.socket = io();
+                this.remoteVideo = document.getElementById('remoteVideo');
+                this.videoPlaceholder = document.getElementById('videoPlaceholder');
+                this.streamId = null;
+                this.peerConnection = null;
+                this.startTime = null;
+                this.timer = null;
+                this.isMuted = false;
+
+                this.initializeElements();
+                this.setupSocketListeners();
+                this.setupEventListeners();
+                this.loadAvailableStreams();
+            }
+
+            initializeElements() {
+                this.streamIdInput = document.getElementById('streamIdInput');
+                this.connectBtn = document.getElementById('connectBtn');
+                this.disconnectBtn = document.getElementById('disconnectBtn');
+                this.refreshBtn = document.getElementById('refreshBtn');
+                this.fullscreenBtn = document.getElementById('fullscreenBtn');
+                this.muteBtn = document.getElementById('muteBtn');
+                this.backBtn = document.getElementById('backBtn');
+                this.streamIdEl = document.getElementById('streamId');
+                this.connectionStatusEl = document.getElementById('connectionStatus');
+                this.latencyEl = document.getElementById('latency');
+                this.resolutionEl = document.getElementById('resolution');
+                this.connectionTypeEl = document.getElementById('connectionType');
+                this.bandwidthEl = document.getElementById('bandwidth');
+                this.watchTimeEl = document.getElementById('watchTime');
+                this.logEl = document.getElementById('log');
+                this.availableStreams = document.getElementById('availableStreams');
+                this.streamList = document.getElementById('streamList');
+            }
+
+            setupSocketListeners() {
+                this.socket.on('connect', () => {
+                    this.log('✅ Sunucuya bağlandı');
+                    this.updateConnectionStatus('Bağlı');
+                });
+
+                this.socket.on('disconnect', () => {
+                    this.log('❌ Sunucu bağlantısı kesildi');
+                    this.updateConnectionStatus('Bağlantı yok');
+                });
+
+                this.socket.on('viewer-ready', (data) => {
+                    this.streamId = data.streamId;
+                    this.streamIdEl.textContent = this.streamId;
+                    this.log(`👀 Stream'e bağlandı: ${this.streamId}`);
+                    this.createPeerConnection();
+                });
+
+                this.socket.on('stream-not-found', (data) => {
+                    this.log(`❌ Stream bulunamadı: ${data.streamId}`);
+                    this.updateConnectionStatus('Stream bulunamadı');
+                });
+
+                this.socket.on('stream-ended', (data) => {
+                    this.log(`⏹️ Stream sona erdi: ${data.streamId}`);
+                    this.disconnect();
+                });
+
+                this.socket.on('answer', async (data) => {
+                    await this.handleAnswer(data);
+                });
+
+                this.socket.on('ice-candidate', (data) => {
+                    this.handleIceCandidate(data);
+                });
+            }
+
+            setupEventListeners() {
+                this.connectBtn.addEventListener('click', () => this.connect());
+                this.disconnectBtn.addEventListener('click', () => this.disconnect());
+                this.refreshBtn.addEventListener('click', () => this.loadAvailableStreams());
+                this.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
+                this.muteBtn.addEventListener('click', () => this.toggleMute());
+                this.backBtn.addEventListener('click', () => window.location.href = '/');
+
+                this.streamIdInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.connect();
+                    }
+                });
+            }
+
+            async connect() {
+                const streamId = this.streamIdInput.value.trim();
+                if (!streamId) {
+                    this.log('❌ Stream ID girin');
+                    return;
+                }
+
+                try {
+                    this.log(`🔗 Stream'e bağlanılıyor: ${streamId}`);
+                    this.socket.emit('viewer-join', streamId);
+                    this.connectBtn.disabled = true;
+                    this.disconnectBtn.disabled = false;
+                } catch (error) {
+                    this.log(`❌ Bağlantı hatası: ${error.message}`);
+                }
+            }
+
+            disconnect() {
+                this.log('❌ Bağlantı kesiliyor...');
+                
+                if (this.peerConnection) {
+                    this.peerConnection.close();
+                    this.peerConnection = null;
+                }
+
+                this.remoteVideo.style.display = 'none';
+                this.videoPlaceholder.style.display = 'flex';
+                this.videoPlaceholder.textContent = 'Bağlantı kesildi';
+
+                this.connectBtn.disabled = false;
+                this.disconnectBtn.disabled = true;
+                this.fullscreenBtn.disabled = true;
+                this.muteBtn.disabled = true;
+                this.stopTimer();
+                this.updateConnectionStatus('Bağlantı yok');
+                this.log('✅ Bağlantı kesildi');
+            }
+
+            async createPeerConnection() {
+                this.peerConnection = new RTCPeerConnection({
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                });
+
+                // Handle remote stream
+                this.peerConnection.ontrack = (event) => {
+                    this.remoteVideo.srcObject = event.streams[0];
+                    this.remoteVideo.style.display = 'block';
+                    this.videoPlaceholder.style.display = 'none';
+                    this.fullscreenBtn.disabled = false;
+                    this.muteBtn.disabled = false;
+                    this.startTime = new Date();
+                    this.startTimer();
+                    this.log('📺 Video akışı başladı');
+                };
+
+                // Handle ICE candidates
+                this.peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        this.socket.emit('ice-candidate', {
+                            target: this.streamId,
+                            candidate: event.candidate
+                        });
+                    }
+                };
+
+                // Create offer
+                const offer = await this.peerConnection.createOffer();
+                await this.peerConnection.setLocalDescription(offer);
+
+                this.socket.emit('offer', {
+                    target: this.streamId,
+                    offer: offer
+                });
+
+                this.log('📤 Offer gönderildi');
+            }
+
+            async handleAnswer(data) {
+                if (this.peerConnection) {
+                    await this.peerConnection.setRemoteDescription(data.answer);
+                    this.log('📥 Answer alındı');
+                }
+            }
+
+            handleIceCandidate(data) {
+                if (this.peerConnection) {
+                    this.peerConnection.addIceCandidate(data.candidate);
+                }
+            }
+
+            async loadAvailableStreams() {
+                try {
+                    const response = await fetch('/api/streams');
+                    const streams = await response.json();
+                    
+                    if (streams.length > 0) {
+                        this.availableStreams.style.display = 'block';
+                        this.streamList.innerHTML = '';
+                        
+                        streams.forEach(stream => {
+                            const streamItem = document.createElement('div');
+                            streamItem.className = 'stream-item';
+                            streamItem.innerHTML = `
+                                <h4>${stream.streamData?.title || 'Stream'}</h4>
+                                <p>ID: ${stream.id}</p>
+                                <p>İzleyici: ${stream.viewerCount}</p>
+                            `;
+                            streamItem.addEventListener('click', () => {
+                                this.streamIdInput.value = stream.id;
+                                this.connect();
+                            });
+                            this.streamList.appendChild(streamItem);
+                        });
+                    } else {
+                        this.availableStreams.style.display = 'none';
+                    }
+                } catch (error) {
+                    this.log(`❌ Stream listesi yüklenemedi: ${error.message}`);
+                }
+            }
+
+            toggleFullscreen() {
+                if (this.remoteVideo.requestFullscreen) {
+                    this.remoteVideo.requestFullscreen();
+                } else if (this.remoteVideo.webkitRequestFullscreen) {
+                    this.remoteVideo.webkitRequestFullscreen();
+                } else if (this.remoteVideo.msRequestFullscreen) {
+                    this.remoteVideo.msRequestFullscreen();
+                }
+            }
+
+            toggleMute() {
+                this.isMuted = !this.isMuted;
+                this.remoteVideo.muted = this.isMuted;
+                this.muteBtn.textContent = this.isMuted ? '🔊 Ses Aç' : '🔇 Sessiz';
+            }
+
+            startTimer() {
+                this.timer = setInterval(() => {
+                    if (this.startTime) {
+                        const elapsed = new Date() - this.startTime;
+                        const minutes = Math.floor(elapsed / 60000);
+                        const seconds = Math.floor((elapsed % 60000) / 1000);
+                        this.watchTimeEl.textContent = 
+                            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    }
+                }, 1000);
+            }
+
+            stopTimer() {
+                if (this.timer) {
+                    clearInterval(this.timer);
+                    this.timer = null;
+                }
+                this.watchTimeEl.textContent = '00:00';
+            }
+
+            updateConnectionStatus(status) {
+                this.connectionStatusEl.textContent = status;
+                this.connectionTypeEl.textContent = status === 'Bağlı' ? 'WebRTC' : '-';
+            }
+
+            log(message) {
+                const timestamp = new Date().toLocaleTimeString();
+                this.logEl.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+                this.logEl.scrollTop = this.logEl.scrollHeight;
+            }
+        }
+
+        // Initialize viewer when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new WebRTCViewer();
+        });
+    </script>
+</body>
+</html>
