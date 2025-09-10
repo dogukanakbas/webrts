@@ -324,7 +324,7 @@ main() {
     cleanup
     
     log "🎉 Deployment başarıyla tamamlandı!"
-    log "📱 Sunucu URL: http://$(hostname -I | awk '{print $1}'):3000"
+    log "📱 Sunucu URL: http://217.18.210.175:3000"
     if [ -n "$DOMAIN_NAME" ]; then
         log "🌐 Domain URL: https://$DOMAIN_NAME"
     fi

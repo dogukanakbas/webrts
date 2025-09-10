@@ -36,10 +36,10 @@ npm start
 
 ### 2. Erişim URL'leri
 
-- **Ana Sayfa**: http://localhost:3000
-- **Streamer (Raspberry Pi)**: http://localhost:3000/streamer
-- **Viewer (İzleyici)**: http://localhost:3000/viewer
-- **API**: http://localhost:3000/api/streams
+- **Ana Sayfa**: http://217.18.210.175:3000
+- **Streamer (Raspberry Pi)**: http://217.18.210.175:3000/streamer
+- **Viewer (İzleyici)**: http://217.18.210.175:3000/viewer
+- **API**: http://217.18.210.175:3000/api/streams
 
 ### 3. Raspberry Pi Kurulumu
 

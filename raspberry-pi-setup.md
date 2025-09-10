@@ -93,7 +93,7 @@ const { spawn } = require('child_process');
 
 class RaspberryPiStreamer {
     constructor() {
-        this.socket = io('http://YOUR_SERVER_IP:3000');
+        this.socket = io('http://217.18.210.175:3000');
         this.streamProcess = null;
         this.setupSocketListeners();
     }
@@ -207,7 +207,7 @@ class RaspberryPiStreamer:
             await asyncio.sleep(0.033)  # ~30 FPS
     
     async def run(self):
-        await self.sio.connect('http://YOUR_SERVER_IP:3000')
+        await self.sio.connect('http://217.18.210.175:3000')
         await self.sio.wait()
 
 if __name__ == '__main__':
