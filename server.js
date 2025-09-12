@@ -32,6 +32,38 @@ const streamBridge = {
   }
 };
 
+// GPS data storage and management
+const gpsDataStore = {
+  latestData: null,
+  dataHistory: [],
+  maxHistorySize: 1000, // Keep last 1000 GPS points
+  
+  addData: (gpsData) => {
+    gpsDataStore.latestData = {
+      ...gpsData,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Add to history
+    gpsDataStore.dataHistory.push(gpsDataStore.latestData);
+    
+    // Keep only recent data
+    if (gpsDataStore.dataHistory.length > gpsDataStore.maxHistorySize) {
+      gpsDataStore.dataHistory.shift();
+    }
+    
+    console.log(`GPS data received: ${JSON.stringify(gpsDataStore.latestData)}`);
+  },
+  
+  getLatestData: () => {
+    return gpsDataStore.latestData;
+  },
+  
+  getDataHistory: (limit = 100) => {
+    return gpsDataStore.dataHistory.slice(-limit);
+  }
+};
+
 // WebRTC signaling server
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
@@ -203,9 +235,11 @@ app.get('/viewer', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'viewer.html'));
 });
 
-// Port configuration for dual streaming
+// Port configuration for dual streaming and GPS data
 const STREAMER_PORT = process.env.STREAMER_PORT || 5000;  // Raspberry Pi stream input
 const VIEWER_PORT = process.env.VIEWER_PORT || 5001;      // Client stream output
+const GPS_INPUT_PORT = process.env.GPS_INPUT_PORT || 5002; // GPS data input
+const GPS_OUTPUT_PORT = process.env.GPS_OUTPUT_PORT || 5004; // GPS data output
 
 // Start streamer server (Raspberry Pi input)
 server.listen(STREAMER_PORT, () => {
@@ -344,4 +378,152 @@ viewerIo.on('connection', (socket) => {
 viewerServer.listen(VIEWER_PORT, () => {
   console.log(`👀 WebRTC Streaming Server - Viewer Output running on port ${VIEWER_PORT}`);
   console.log(`👀 Viewer URL: http://localhost:${VIEWER_PORT}/viewer`);
+});
+
+// Create GPS input server (5002)
+const gpsInputApp = express();
+const gpsInputServer = http.createServer(gpsInputApp);
+
+// Middleware for GPS input server
+gpsInputApp.use(cors());
+gpsInputApp.use(express.json());
+
+// GPS data input endpoint
+gpsInputApp.post('/gps', (req, res) => {
+  try {
+    const gpsData = req.body;
+    
+    // Validate GPS data
+    if (!gpsData.latitude || !gpsData.longitude) {
+      return res.status(400).json({ 
+        error: 'Invalid GPS data. latitude and longitude are required.' 
+      });
+    }
+    
+    // Add to GPS data store
+    gpsDataStore.addData(gpsData);
+    
+    res.json({ 
+      success: true, 
+      message: 'GPS data received successfully',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('GPS data error:', error);
+    res.status(500).json({ 
+      error: 'Failed to process GPS data',
+      message: error.message 
+    });
+  }
+});
+
+// Health check endpoint for GPS input
+gpsInputApp.get('/health', (req, res) => {
+  res.json({ 
+    status: 'GPS Input Server Running',
+    port: GPS_INPUT_PORT,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Start GPS input server
+gpsInputServer.listen(GPS_INPUT_PORT, () => {
+  console.log(`📍 GPS Input Server running on port ${GPS_INPUT_PORT}`);
+  console.log(`📍 GPS Data URL: http://localhost:${GPS_INPUT_PORT}/gps`);
+});
+
+// Create GPS output server (5004)
+const gpsOutputApp = express();
+const gpsOutputServer = http.createServer(gpsOutputApp);
+
+// Middleware for GPS output server
+gpsOutputApp.use(cors());
+gpsOutputApp.use(express.json());
+
+// GPS data output endpoints
+gpsOutputApp.get('/gps/latest', (req, res) => {
+  try {
+    const latestData = gpsDataStore.getLatestData();
+    
+    if (!latestData) {
+      return res.status(404).json({ 
+        error: 'No GPS data available',
+        message: 'No GPS data has been received yet'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: latestData
+    });
+    
+  } catch (error) {
+    console.error('GPS latest data error:', error);
+    res.status(500).json({ 
+      error: 'Failed to retrieve latest GPS data',
+      message: error.message 
+    });
+  }
+});
+
+gpsOutputApp.get('/gps/history', (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 100;
+    const history = gpsDataStore.getDataHistory(limit);
+    
+    res.json({
+      success: true,
+      count: history.length,
+      data: history
+    });
+    
+  } catch (error) {
+    console.error('GPS history error:', error);
+    res.status(500).json({ 
+      error: 'Failed to retrieve GPS history',
+      message: error.message 
+    });
+  }
+});
+
+gpsOutputApp.get('/gps/status', (req, res) => {
+  try {
+    const latestData = gpsDataStore.getLatestData();
+    const historyCount = gpsDataStore.dataHistory.length;
+    
+    res.json({
+      success: true,
+      status: 'GPS Output Server Running',
+      port: GPS_OUTPUT_PORT,
+      hasData: !!latestData,
+      lastUpdate: latestData ? latestData.timestamp : null,
+      historyCount: historyCount,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('GPS status error:', error);
+    res.status(500).json({ 
+      error: 'Failed to retrieve GPS status',
+      message: error.message 
+    });
+  }
+});
+
+// Health check endpoint for GPS output
+gpsOutputApp.get('/health', (req, res) => {
+  res.json({ 
+    status: 'GPS Output Server Running',
+    port: GPS_OUTPUT_PORT,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Start GPS output server
+gpsOutputServer.listen(GPS_OUTPUT_PORT, () => {
+  console.log(`📍 GPS Output Server running on port ${GPS_OUTPUT_PORT}`);
+  console.log(`📍 Latest GPS: http://localhost:${GPS_OUTPUT_PORT}/gps/latest`);
+  console.log(`📍 GPS History: http://localhost:${GPS_OUTPUT_PORT}/gps/history`);
+  console.log(`📍 GPS Status: http://localhost:${GPS_OUTPUT_PORT}/gps/status`);
 });
