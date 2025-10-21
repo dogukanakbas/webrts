@@ -255,9 +255,7 @@ Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICE
 ## 📞 Destek
 
 Sorularınız için:
-- GitHub Issues
-- Email: your-email@example.com
-- Discord: [Sunucu Linki]
+- Email: akbasdgukan20@gmail.com
 
 ---
 
